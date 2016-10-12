@@ -45,7 +45,7 @@ HW_blur(ImagePtr I1, int filterW, int filterH, ImagePtr I2)
 			}
 		}
 		else {
-			IP_copyImage(I1, tempPic);
+			IP_copyChannel (I1, ch,tempPic,ch);
 		}
 		IP_getChannel(tempPic, ch, temp, type);
 
@@ -59,7 +59,7 @@ HW_blur(ImagePtr I1, int filterW, int filterH, ImagePtr I2)
 			}
 		}
 		else{
-			IP_copyImage(tempPic, I2);
+			IP_copyChannel(tempPic, ch, I2, ch);
 		}
 	}
 }
@@ -82,43 +82,42 @@ blur1D(ChannelPtr<uchar> src, int len, int stride, int ww, ChannelPtr<uchar> dst
 	int buffer_size = stride + (ww);
 	uchar * Buffer = new uchar[buffer_size];
 	uchar * temp = Buffer;
+	int pad = ww / 2;
 
 	//Loop through the row or column and place buffer/2 pixels of copied pixels on
 	//both side of the line with the actual line in the middle
-	for (int i = 0; i < stride; i++){
-		for (int i2 = 0; i2 < (ww / 2); i2++){
-			*temp = *src;
-			//qDebug() << i << " " << ww << " " << *temp << endl;
-			temp++;
-		}
-		for (; i < stride; i++){
-			*temp = *src;
-			src += len;
-			temp++;
-		}
-		for (int i3 = 0; i3 < ww / 2; i3++){
-			*temp = *src;
-			temp++;
-		}
-		//qDebug() << i << " " << stride << endl;
+	int i;
+	for (i = 0; i < pad; i++){
+		*temp = *src;
+		//qDebug() << i << " " << ww << " " << *temp << endl;
+		temp++;
 	}
+	for (; i < stride+pad; i++){
+		*temp = *src;
+		src += len;
+		temp++;
+	}
+	for (; i < stride+(ww-1); i++){
+		*temp = *src;
+		temp++;
+	}
+		//qDebug() << i << " " << stride << endl;
 
 	//Find the initial sum of the first batch of buffer size pixels and save the average
-	for (int i2 = 0; i2 < ww; i2++){
-		sum += Buffer[i2];
+	for (i = 0; i < ww; i++){
+		sum += Buffer[i];
 	}
 	*dst = sum / ww;
 
 	//Loop over the array the same size of the original image
-	for (int i = 0; i < stride; i++){
+	for (i = 0; i < stride; i++, dst += len){
 		//To save time add the next pixel's value in the array to the sum while subtracting the earliest
 		sum -= Buffer[i];
 		sum += Buffer[i + ww];
 
 		//calculate the next value
 		*dst = sum / ww;
-		//Increment the by the len to get to the next pixel
-		dst += len;
+		
 	}
 	//clean up the sum and delete the buffer
 	sum = 0;
